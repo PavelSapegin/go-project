@@ -31,31 +31,31 @@ func exitWithError(msg string) {
 func fetchRequest(ctx context.Context, client *http.Client, movieID int) (Response, error) {	
 	
 	fullURL := fmt.Sprintf("https://homeworksite.site/%d/info.0.json", movieID)
-	var parsed_resp Response
+	var parsedResp Response
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
-		return parsed_resp, fmt.Errorf("Can't create a request %w", err)
+		return parsedResp, fmt.Errorf("Can't create a request %w", err)
 	}
 
-	resp, err := (*client).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return parsed_resp, fmt.Errorf("Can't get a response %w", err)
+		return parsedResp, fmt.Errorf("Can't get a response %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return parsed_resp, fmt.Errorf("Server returned code %d", resp.StatusCode)
+		return parsedResp, fmt.Errorf("Server returned code %d", resp.StatusCode)
 	}
 
 	
-	err = json.NewDecoder(resp.Body).Decode(&parsed_resp)
+	err = json.NewDecoder(resp.Body).Decode(&parsedResp)
 	if err != nil {
-		return parsed_resp, fmt.Errorf("Can't parsed response %w\n", err)
+		return parsedResp, fmt.Errorf("Can't parsed response %w", err)
 	}
 
-	return parsed_resp, nil
+	return parsedResp, nil
 }
 
 
@@ -74,8 +74,8 @@ func worker(ctx context.Context, wg *sync.WaitGroup, client *http.Client, id int
 			}
 			
 			workerCtx, workerCancel := context.WithTimeout(ctx, time.Duration(timeout) * time.Second)
-			defer workerCancel()
 			res, err := fetchRequest(workerCtx, client, movieID)
+			workerCancel()
 			if err != nil {
 				fmt.Printf("Failed to fetch request for movieID = %d: %v\n", movieID, err)
 				continue
@@ -112,11 +112,11 @@ func main() {
 	}
 
 	if from <= 0 {
-		exitWithError("Param from must be greater than 1")
+		exitWithError("Param from must be greater or equal than 1")
 	}
 
 	if to <= 0 {
-		exitWithError("Param to must be greater than 1")
+		exitWithError("Param to must be greater or equal than 1")
 	}
 
 	if from > to {
@@ -138,35 +138,45 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	num_jobs := to - from + 1
-	jobs := make(chan int, num_jobs)
-	results := make(chan Response, num_jobs)
+	numJobs := to - from + 1
+	jobs := make(chan int, workersNum)
+	results := make(chan Response, workersNum)
 
 	for id := range(workersNum) {
 		wg.Add(1)
 		go worker(ctx, &wg, &client, id, jobs, results, timeout)
 	}
 
-	for id := from; id <= to; id++ {
-		jobs <- id
-	}
+	go func (){
+		defer close(jobs)
+		for id := from; id <= to; id++ {
+			select {
+			case <- ctx.Done():
+				return
+			case jobs <- id:
+			}
+		}
+		
+	}()
+	
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
-	close(jobs)
-	wg.Wait()
-	close(results)
 
 
-	results_arr := make([]Response, 0, num_jobs)
+	resultsArr := make([]Response, 0, numJobs)
 	for results := range results{
-		results_arr = append(results_arr, results)
+		resultsArr = append(resultsArr, results)
 	}
 
-	slices.SortFunc(results_arr, func(a, b Response) int {
+	slices.SortFunc(resultsArr, func(a, b Response) int {
 		return cmp.Compare(a.MovieID, b.MovieID)
 	})
 
 	fmt.Println("id - title - year - director")
-	for _, result := range results_arr{
+	for _, result := range resultsArr{
 		fmt.Printf("%d - %s - %d - %s\n", result.MovieID, result.Title, result.Year, result.Director)
 	}
 
