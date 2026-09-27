@@ -1,16 +1,18 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
-	"time"
-	"sync"
-	"flag"
-	"slices"
-	"cmp"
 	"os"
+	"os/signal"
+	"slices"
+	"sync"
+	"syscall"
+	"time"
 )
 
 type Response struct {
@@ -57,7 +59,7 @@ func fetchRequest(ctx context.Context, client *http.Client, movieID int) (Respon
 }
 
 
-func worker(ctx context.Context, wg *sync.WaitGroup, client *http.Client, id int, jobs <-chan int, results chan<- Response) {
+func worker(ctx context.Context, wg *sync.WaitGroup, client *http.Client, id int, jobs <-chan int, results chan<- Response, timeout int) {
 
 	defer wg.Done()
 	for {
@@ -70,13 +72,15 @@ func worker(ctx context.Context, wg *sync.WaitGroup, client *http.Client, id int
 			if !ok {
 				return
 			}
-
-			res, err := fetchRequest(ctx, client, movieID)
+			
+			workerCtx, workerCancel := context.WithTimeout(ctx, time.Duration(timeout) * time.Second)
+			defer workerCancel()
+			res, err := fetchRequest(workerCtx, client, movieID)
 			if err != nil {
 				fmt.Printf("Failed to fetch request for movieID = %d: %v\n", movieID, err)
 				continue
 			}
-
+			
 			select {
 			case <- ctx.Done():
 				fmt.Printf("Context for worker %d was canceled\n", id)
@@ -115,8 +119,8 @@ func main() {
 		exitWithError("Param to must be greater than 1")
 	}
 
-	if from >= to {
-		exitWithError("Param to must be greater than from")
+	if from > to {
+		exitWithError("Param to must be greater or equal than from")
 	}
 
 	if workersNum <= 0 {
@@ -127,9 +131,7 @@ func main() {
 		exitWithError("Param timeout must be greater than 0")
 	}
 
-	
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout) * time.Second)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	client := http.Client{}
@@ -142,7 +144,7 @@ func main() {
 
 	for id := range(workersNum) {
 		wg.Add(1)
-		go worker(ctx, &wg, &client, id, jobs, results)
+		go worker(ctx, &wg, &client, id, jobs, results, timeout)
 	}
 
 	for id := from; id <= to; id++ {
@@ -163,13 +165,9 @@ func main() {
 		return cmp.Compare(a.MovieID, b.MovieID)
 	})
 
+	fmt.Println("id - title - year - director")
 	for _, result := range results_arr{
-		fmt.Println("Result: ")
-		fmt.Println("Id:" ,result.MovieID)
-		fmt.Println("Title: ", result.Title)
-		fmt.Println("Year: ", result.Year)
-		fmt.Println("Director: ", result.Director)
-		fmt.Println("-----------------")
+		fmt.Printf("%d - %s - %d - %s\n", result.MovieID, result.Title, result.Year, result.Director)
 	}
 
 }
