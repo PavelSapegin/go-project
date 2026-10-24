@@ -5,10 +5,14 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"net"
 
 	_ "task3-http-grpc/docs"
+	moviepb "task3-http-grpc/proto"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"google.golang.org/grpc"
+	"task3-http-grpc/grpc_server"
 
 	"task3-http-grpc/client"
 	"task3-http-grpc/handler"
@@ -33,6 +37,21 @@ func main(){
 	exClient := client.ExcternalClient{}
 	exClient.NewClient(standURL, 5*time.Second)
 
+	go func() {
+		lis, err := net.Listen("tcp", ":50051")
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+
+		grpcServer := grpc.NewServer()
+		moviepb.RegisterMovieServiceServer(grpcServer, &grpc_server.MovieServiceServer{Client: &exClient})
+		
+		log.Printf("Starting gRPC server on %s", ":50051")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+	
 	handler := handler.NewMovieHandler(&exClient)
 
 	mux := http.NewServeMux()
