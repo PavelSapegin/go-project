@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package movie;
+option go_package = "./;moviepb";
+
+service MovieService {
+    rpc LoadMovies (LoadMoviesRequest) returns (LoadMoviesResponse);
+    rpc LoadLastMovie (LoadLastMovieRequest) returns (Movie);
+}
+
+message LoadMoviesRequest {
+    int32 from = 1;
+    int32 to = 2;
+}
+
+message LoadLastMovieRequest {
+}
+
+message Movie {
+    int32 id = 1;
+    string title = 2;
+    int32 year = 3;
+    string director = 4;
+}
+
+message LoadMoviesResponse {
+    repeated Movie movies = 1;
+}
