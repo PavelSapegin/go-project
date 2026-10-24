@@ -81,7 +81,7 @@ func (h *MovieHandler) GetMovieFromTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	movies, errorsMap, err := h.Provider.FetchMovieFromTo(r.Context(), from, to)
+	movies, _, err := h.Provider.FetchMovieFromTo(r.Context(), from, to)
 	if err != nil {
 
 		if errors.Is(err, context.Canceled) {
@@ -95,10 +95,10 @@ func (h *MovieHandler) GetMovieFromTo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error fetching movies: %v", err), http.StatusInternalServerError)
 		return
 	}
-	h.respondJSON(w, http.StatusOK, map[string]any{
-		"movies": movies,
-		"errors": errorsMap,
-	})
+	if movies == nil {
+		movies = []*client.Response{}
+	}
+	h.respondJSON(w, http.StatusOK, movies)
 } 
 
 // @Summary Get the last movie
