@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MovieService_LoadMovies_FullMethodName    = "/movie.MovieService/LoadMovies"
-	MovieService_LoadLastMovie_FullMethodName = "/movie.MovieService/LoadLastMovie"
+	MovieService_LoadMovies_FullMethodName   = "/movie.MovieService/LoadMovies"
+	MovieService_GetLastMovie_FullMethodName = "/movie.MovieService/GetLastMovie"
 )
 
 // MovieServiceClient is the client API for MovieService service.
@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MovieServiceClient interface {
 	LoadMovies(ctx context.Context, in *LoadMoviesRequest, opts ...grpc.CallOption) (*LoadMoviesResponse, error)
-	LoadLastMovie(ctx context.Context, in *LoadLastMovieRequest, opts ...grpc.CallOption) (*Movie, error)
+	GetLastMovie(ctx context.Context, in *GetLastMovieRequest, opts ...grpc.CallOption) (*Movie, error)
 }
 
 type movieServiceClient struct {
@@ -49,10 +49,10 @@ func (c *movieServiceClient) LoadMovies(ctx context.Context, in *LoadMoviesReque
 	return out, nil
 }
 
-func (c *movieServiceClient) LoadLastMovie(ctx context.Context, in *LoadLastMovieRequest, opts ...grpc.CallOption) (*Movie, error) {
+func (c *movieServiceClient) GetLastMovie(ctx context.Context, in *GetLastMovieRequest, opts ...grpc.CallOption) (*Movie, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Movie)
-	err := c.cc.Invoke(ctx, MovieService_LoadLastMovie_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, MovieService_GetLastMovie_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *movieServiceClient) LoadLastMovie(ctx context.Context, in *LoadLastMovi
 // for forward compatibility.
 type MovieServiceServer interface {
 	LoadMovies(context.Context, *LoadMoviesRequest) (*LoadMoviesResponse, error)
-	LoadLastMovie(context.Context, *LoadLastMovieRequest) (*Movie, error)
+	GetLastMovie(context.Context, *GetLastMovieRequest) (*Movie, error)
 	mustEmbedUnimplementedMovieServiceServer()
 }
 
@@ -78,8 +78,8 @@ type UnimplementedMovieServiceServer struct{}
 func (UnimplementedMovieServiceServer) LoadMovies(context.Context, *LoadMoviesRequest) (*LoadMoviesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LoadMovies not implemented")
 }
-func (UnimplementedMovieServiceServer) LoadLastMovie(context.Context, *LoadLastMovieRequest) (*Movie, error) {
-	return nil, status.Error(codes.Unimplemented, "method LoadLastMovie not implemented")
+func (UnimplementedMovieServiceServer) GetLastMovie(context.Context, *GetLastMovieRequest) (*Movie, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLastMovie not implemented")
 }
 func (UnimplementedMovieServiceServer) mustEmbedUnimplementedMovieServiceServer() {}
 func (UnimplementedMovieServiceServer) testEmbeddedByValue()                      {}
@@ -120,20 +120,20 @@ func _MovieService_LoadMovies_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MovieService_LoadLastMovie_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoadLastMovieRequest)
+func _MovieService_GetLastMovie_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLastMovieRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MovieServiceServer).LoadLastMovie(ctx, in)
+		return srv.(MovieServiceServer).GetLastMovie(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MovieService_LoadLastMovie_FullMethodName,
+		FullMethod: MovieService_GetLastMovie_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MovieServiceServer).LoadLastMovie(ctx, req.(*LoadLastMovieRequest))
+		return srv.(MovieServiceServer).GetLastMovie(ctx, req.(*GetLastMovieRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -150,8 +150,8 @@ var MovieService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MovieService_LoadMovies_Handler,
 		},
 		{
-			MethodName: "LoadLastMovie",
-			Handler:    _MovieService_LoadLastMovie_Handler,
+			MethodName: "GetLastMovie",
+			Handler:    _MovieService_GetLastMovie_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

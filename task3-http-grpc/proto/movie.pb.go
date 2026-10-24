@@ -73,26 +73,26 @@ func (x *LoadMoviesRequest) GetTo() int32 {
 	return 0
 }
 
-type LoadLastMovieRequest struct {
+type GetLastMovieRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LoadLastMovieRequest) Reset() {
-	*x = LoadLastMovieRequest{}
+func (x *GetLastMovieRequest) Reset() {
+	*x = GetLastMovieRequest{}
 	mi := &file_movie_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LoadLastMovieRequest) String() string {
+func (x *GetLastMovieRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LoadLastMovieRequest) ProtoMessage() {}
+func (*GetLastMovieRequest) ProtoMessage() {}
 
-func (x *LoadLastMovieRequest) ProtoReflect() protoreflect.Message {
+func (x *GetLastMovieRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_movie_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -104,8 +104,8 @@ func (x *LoadLastMovieRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LoadLastMovieRequest.ProtoReflect.Descriptor instead.
-func (*LoadLastMovieRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetLastMovieRequest.ProtoReflect.Descriptor instead.
+func (*GetLastMovieRequest) Descriptor() ([]byte, []int) {
 	return file_movie_proto_rawDescGZIP(), []int{1}
 }
 
@@ -180,6 +180,7 @@ func (x *Movie) GetDirector() string {
 type LoadMoviesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Movies        []*Movie               `protobuf:"bytes,1,rep,name=movies,proto3" json:"movies,omitempty"`
+	Errors        map[int32]string       `protobuf:"bytes,2,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Map of movie IDs to error messages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,6 +222,13 @@ func (x *LoadMoviesResponse) GetMovies() []*Movie {
 	return nil
 }
 
+func (x *LoadMoviesResponse) GetErrors() map[int32]string {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
 var File_movie_proto protoreflect.FileDescriptor
 
 const file_movie_proto_rawDesc = "" +
@@ -228,19 +236,23 @@ const file_movie_proto_rawDesc = "" +
 	"\vmovie.proto\x12\x05movie\"7\n" +
 	"\x11LoadMoviesRequest\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\x05R\x04from\x12\x0e\n" +
-	"\x02to\x18\x02 \x01(\x05R\x02to\"\x16\n" +
-	"\x14LoadLastMovieRequest\"]\n" +
+	"\x02to\x18\x02 \x01(\x05R\x02to\"\x15\n" +
+	"\x13GetLastMovieRequest\"]\n" +
 	"\x05Movie\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
 	"\x04year\x18\x03 \x01(\x05R\x04year\x12\x1a\n" +
-	"\bdirector\x18\x04 \x01(\tR\bdirector\":\n" +
+	"\bdirector\x18\x04 \x01(\tR\bdirector\"\xb4\x01\n" +
 	"\x12LoadMoviesResponse\x12$\n" +
-	"\x06movies\x18\x01 \x03(\v2\f.movie.MovieR\x06movies2\x8d\x01\n" +
+	"\x06movies\x18\x01 \x03(\v2\f.movie.MovieR\x06movies\x12=\n" +
+	"\x06errors\x18\x02 \x03(\v2%.movie.LoadMoviesResponse.ErrorsEntryR\x06errors\x1a9\n" +
+	"\vErrorsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\x8b\x01\n" +
 	"\fMovieService\x12A\n" +
 	"\n" +
-	"LoadMovies\x12\x18.movie.LoadMoviesRequest\x1a\x19.movie.LoadMoviesResponse\x12:\n" +
-	"\rLoadLastMovie\x12\x1b.movie.LoadLastMovieRequest\x1a\f.movie.MovieB\fZ\n" +
+	"LoadMovies\x12\x18.movie.LoadMoviesRequest\x1a\x19.movie.LoadMoviesResponse\x128\n" +
+	"\fGetLastMovie\x12\x1a.movie.GetLastMovieRequest\x1a\f.movie.MovieB\fZ\n" +
 	"./;moviepbb\x06proto3"
 
 var (
@@ -255,24 +267,26 @@ func file_movie_proto_rawDescGZIP() []byte {
 	return file_movie_proto_rawDescData
 }
 
-var file_movie_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_movie_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_movie_proto_goTypes = []any{
-	(*LoadMoviesRequest)(nil),    // 0: movie.LoadMoviesRequest
-	(*LoadLastMovieRequest)(nil), // 1: movie.LoadLastMovieRequest
-	(*Movie)(nil),                // 2: movie.Movie
-	(*LoadMoviesResponse)(nil),   // 3: movie.LoadMoviesResponse
+	(*LoadMoviesRequest)(nil),   // 0: movie.LoadMoviesRequest
+	(*GetLastMovieRequest)(nil), // 1: movie.GetLastMovieRequest
+	(*Movie)(nil),               // 2: movie.Movie
+	(*LoadMoviesResponse)(nil),  // 3: movie.LoadMoviesResponse
+	nil,                         // 4: movie.LoadMoviesResponse.ErrorsEntry
 }
 var file_movie_proto_depIdxs = []int32{
 	2, // 0: movie.LoadMoviesResponse.movies:type_name -> movie.Movie
-	0, // 1: movie.MovieService.LoadMovies:input_type -> movie.LoadMoviesRequest
-	1, // 2: movie.MovieService.LoadLastMovie:input_type -> movie.LoadLastMovieRequest
-	3, // 3: movie.MovieService.LoadMovies:output_type -> movie.LoadMoviesResponse
-	2, // 4: movie.MovieService.LoadLastMovie:output_type -> movie.Movie
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 1: movie.LoadMoviesResponse.errors:type_name -> movie.LoadMoviesResponse.ErrorsEntry
+	0, // 2: movie.MovieService.LoadMovies:input_type -> movie.LoadMoviesRequest
+	1, // 3: movie.MovieService.GetLastMovie:input_type -> movie.GetLastMovieRequest
+	3, // 4: movie.MovieService.LoadMovies:output_type -> movie.LoadMoviesResponse
+	2, // 5: movie.MovieService.GetLastMovie:output_type -> movie.Movie
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_movie_proto_init() }
@@ -286,7 +300,7 @@ func file_movie_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_movie_proto_rawDesc), len(file_movie_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

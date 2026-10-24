@@ -19,16 +19,31 @@ const docTemplate = `{
         "/last-movie": {
             "get": {
                 "description": "Fetches the last movie from the external service.",
+                "produces": [
+                    "application/json"
+                ],
                 "summary": "Get the last movie",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Last movie details",
                         "schema": {
                             "$ref": "#/definitions/client.Response"
                         }
                     },
-                    "500": {
-                        "description": "Error fetching last movie",
+                    "404": {
+                        "description": "No movies found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "502": {
+                        "description": "External service error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Request to external service timed out",
                         "schema": {
                             "type": "string"
                         }
@@ -39,6 +54,9 @@ const docTemplate = `{
         "/load-movies": {
             "get": {
                 "description": "Fetches movies from the external service based on the provided 'from' and 'to' query parameters.",
+                "produces": [
+                    "application/json"
+                ],
                 "summary": "Get movies from a specified range",
                 "parameters": [
                     {
@@ -58,12 +76,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "List of fetched movies along with any partial errors",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/client.Response"
-                            }
+                            "$ref": "#/definitions/handler.LoadMoviesResponse"
                         }
                     },
                     "400": {
@@ -73,7 +88,13 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Error fetching movies",
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "504": {
+                        "description": "Request to external service timed out",
                         "schema": {
                             "type": "string"
                         }
@@ -89,7 +110,7 @@ const docTemplate = `{
                 "director": {
                     "type": "string"
                 },
-                "movie_id": {
+                "id": {
                     "type": "integer"
                 },
                 "title": {
@@ -97,6 +118,31 @@ const docTemplate = `{
                 },
                 "year": {
                     "type": "integer"
+                }
+            }
+        },
+        "handler.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.LoadMoviesResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "movies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/client.Response"
+                    }
                 }
             }
         }

@@ -5,7 +5,7 @@ option go_package = "./;moviepb";
 
 service MovieService {
     rpc LoadMovies (LoadMoviesRequest) returns (LoadMoviesResponse);
-    rpc LoadLastMovie (LoadLastMovieRequest) returns (Movie);
+    rpc GetLastMovie (GetLastMovieRequest) returns (Movie);
 }
 
 message LoadMoviesRequest {
@@ -13,7 +13,7 @@ message LoadMoviesRequest {
     int32 to = 2;
 }
 
-message LoadLastMovieRequest {
+message GetLastMovieRequest {
 }
 
 message Movie {
@@ -25,4 +25,5 @@ message Movie {
 
 message LoadMoviesResponse {
     repeated Movie movies = 1;
+    map<int32, string> errors = 2; // Map of movie IDs to error messages
 }
