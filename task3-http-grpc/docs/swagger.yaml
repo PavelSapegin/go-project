@@ -1,0 +1,64 @@
+definitions:
+  client.Response:
+    properties:
+      director:
+        type: string
+      movie_id:
+        type: integer
+      title:
+        type: string
+      year:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: This is a sample server for a movie API.
+  termsOfService: http://swagger.io/terms/
+  title: Movie API
+  version: "1.0"
+paths:
+  /last-movie:
+    get:
+      description: Fetches the last movie from the external service.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/client.Response'
+        "500":
+          description: Error fetching last movie
+          schema:
+            type: string
+      summary: Get the last movie
+  /load-movies:
+    get:
+      description: Fetches movies from the external service based on the provided
+        'from' and 'to' query parameters.
+      parameters:
+      - description: Starting movie ID
+        in: query
+        name: from
+        required: true
+        type: integer
+      - description: Ending movie ID
+        in: query
+        name: to
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/client.Response'
+            type: array
+        "400":
+          description: Missing or invalid 'from' or 'to' parameter
+          schema:
+            type: string
+        "500":
+          description: Error fetching movies
+          schema:
+            type: string
+      summary: Get movies from a specified range
+swagger: "2.0"

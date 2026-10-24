@@ -6,11 +6,18 @@ import (
 	"os"
 	"time"
 
+	_ "task3-http-grpc/docs"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
 	"task3-http-grpc/client"
 	"task3-http-grpc/handler"
 )
 
-
+// @title Movie API
+// @version 1.0
+// @description This is a sample server for a movie API.
+// @termsOfService http://swagger.io/terms/
 func main(){
 	
 	standURL := os.Getenv("MOVIE_BASE_URL")
@@ -31,6 +38,7 @@ func main(){
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /load-movies", handler.GetMovieFromTo)
 	mux.HandleFunc("GET /last-movie", handler.GetLastMovie)
+	mux.HandleFunc("GET /swagger/", httpSwagger.Handler())
 
 	server := &http.Server{
 		Addr: serverAddr,

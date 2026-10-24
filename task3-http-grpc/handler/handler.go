@@ -34,6 +34,15 @@ func (h *MovieHandler) respondJSON(w http.ResponseWriter, status int, data any) 
 	_ = json.NewEncoder(w).Encode(data)
 }
 
+// GetMovieFromTo handles the GET /load-movies endpoint to fetch movies from a specified range.
+// @Summary Get movies from a specified range
+// @Description Fetches movies from the external service based on the provided 'from' and 'to' query parameters.
+// @Param from query int true "Starting movie ID"
+// @Param to query int true "Ending movie ID"
+// @Success 200 {array} client.Response
+// @Failure 400 {string} string "Missing or invalid 'from' or 'to' parameter"
+// @Failure 500 {string} string "Error fetching movies"
+// @Router /load-movies [get]
 func (h *MovieHandler) GetMovieFromTo(w http.ResponseWriter, r *http.Request) {
 	
 	fromStr := strings.TrimSpace(r.URL.Query().Get("from"))
@@ -64,6 +73,12 @@ func (h *MovieHandler) GetMovieFromTo(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, movies)
 } 
 
+// GetLastMovie handles the GET /last-movie endpoint to fetch the last movie.
+// @Summary Get the last movie
+// @Description Fetches the last movie from the external service.
+// @Success 200 {object} client.Response
+// @Failure 500 {string} string "Error fetching last movie"
+// @Router /last-movie [get]
 func (h *MovieHandler) GetLastMovie(w http.ResponseWriter, r *http.Request) {
 	lastMovie, err := h.Provider.FetchLastMovie(r.Context())
 	if err != nil {
