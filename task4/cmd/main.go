@@ -15,7 +15,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"google.golang.org/grpc"
 
-	"task3-http-grpc/internal/movie_client"
+	"task3-http-grpc/internal/adapter"
 	"task3-http-grpc/internal/handler"
 	"task3-http-grpc/internal/usecase"
 )
@@ -36,7 +36,7 @@ func main() {
 		serverAddr = ":8080"
 	}
 
-	exClient := movie_client.NewExternalClient(standURL, 5*time.Second)
+	exClient := adapter.NewExternalClient(standURL, 5*time.Second)
 	useCase := usecase.MovieUseCase{MovieProvider: exClient}
 
 

@@ -1,4 +1,4 @@
-package movie_client
+package adapter
 
 import (
 	"context"
