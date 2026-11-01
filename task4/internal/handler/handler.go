@@ -126,10 +126,7 @@ func (h *MovieHandler) GetMovieFromTo(w http.ResponseWriter, r *http.Request) {
 		movieResponses[i] = toMovieResponse(movie)
 	}
 
-	h.respondJSON(w, http.StatusOK, LoadMoviesResponse{
-		Movie: movieResponses,
-		Errors: make(map[int]string),
-	})
+	h.respondJSON(w, http.StatusOK, movieResponses)
 } 
 
 // @Summary Get the last movie
