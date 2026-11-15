@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 	"sync"
+	"math"
 
 	"task3-http-grpc/internal/domain"
 )
@@ -57,6 +58,10 @@ func (m *MovieUseCase) findLastExternalMovie(ctx context.Context) (*domain.Movie
 		}
 
 		lastMovie = movie
+		if lastMovie.MovieId == math.MaxInt {
+			return lastMovie, nil
+		}
+
 		low = high
 		high *= 2
 
@@ -82,6 +87,9 @@ func (m *MovieUseCase) findLastExternalMovie(ctx context.Context) (*domain.Movie
 			return nil, fmt.Errorf("Couldn't get movie with ID %d: %w", mid, err)
 		}
 		lastMovie = movie
+		if mid == right {
+			break
+		}
 		left = mid + 1
 	}
 
