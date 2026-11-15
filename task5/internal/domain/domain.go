@@ -21,5 +21,11 @@ type MovieUseCase interface {
 	GetLastMovie(ctx context.Context) (*Movie, error)
 }
 
+type MovieRepository interface {
+	GetLastMovie(ctx context.Context) (*Movie, error)
+	GetMoviesBatch(ctx context.Context, from int, to int) ([]*Movie, error)
+	SaveMovies(ctx context.Context, movies []*Movie) error
+}
+
 var ErrNotFound = errors.New("movie not found")
 var ErrInvalidRange = errors.New("invalid range: 'from' and 'to' must be positive integers, and 'from' must be less than or equal to 'to'")
