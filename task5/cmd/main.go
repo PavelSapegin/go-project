@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"context"
 
 	_ "task3-http-grpc/docs"
 	moviepb "task3-http-grpc/proto"
@@ -18,6 +19,11 @@ import (
 	"task3-http-grpc/internal/adapter"
 	"task3-http-grpc/internal/handler"
 	"task3-http-grpc/internal/usecase"
+	"task3-http-grpc/internal/repository"
+	
+	pgxpool "github.com/jackc/pgx/v5/pgxpool"
+	stdlib "github.com/jackc/pgx/v5/stdlib"
+    goose "github.com/pressly/goose/v3"
 )
 
 // @title Movie API
@@ -36,9 +42,45 @@ func main() {
 		serverAddr = ":8080"
 	}
 
-	exClient := adapter.NewExternalClient(standURL, 5*time.Second)
-	useCase := usecase.MovieUseCase{MovieProvider: exClient}
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
+	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	defer cancel()
+
+	pool, err_pgx := pgxpool.New(ctx, dbURL)
+	if err_pgx != nil {
+		log.Fatalf("failed to create database pool: %v", err_pgx)
+	}
+	defer pool.Close()
+
+	err_gpx := pool.Ping(ctx)
+	if err_gpx != nil {
+		log.Fatalf("failed to ping database: %v", err_gpx)
+	}
+
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	if err := goose.SetDialect("postgres"); err != nil {
+		log.Fatalf("failed to open DB from pool %v", err)
+	}
+
+	if err := goose.Up(sqlDB, "migrations"); err != nil {
+		log.Fatalf("failed to apply migrations %v", err)
+	}
+
+	exClient := adapter.NewExternalClient(standURL, 15*time.Second)
+	useCase := usecase.MovieUseCase{MovieProvider: exClient, MovieRepo: repository.NewPostgresMovieRepository(pool)}
+
+	syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	log.Println("Starting movie synchronization...")
+	if err := useCase.SynchronizeMovies(syncCtx); err != nil {
+		log.Fatalf("failed to synchronize movies: %v", err)
+	}
+	log.Println("Movie synchronization completed.")
 
 
 	go func() {
