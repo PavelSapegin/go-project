@@ -32,6 +32,7 @@ import (
 // @termsOfService http://swagger.io/terms/
 func main() {
 
+	// Load environment variables
 	standURL := os.Getenv("MOVIE_BASE_URL")
 	if standURL == "" {
 		standURL = "https://homeworksite.site"
@@ -51,6 +52,7 @@ func main() {
 
 	defer cancel()
 
+	// Create a new database connection pool
 	pool, err_pgx := pgxpool.New(ctx, dbURL)
 	if err_pgx != nil {
 		log.Fatalf("failed to create database pool: %v", err_pgx)
@@ -71,6 +73,8 @@ func main() {
 		log.Fatalf("failed to apply migrations %v", err)
 	}
 
+
+	// Initialize the external client, use case, and repository
 	exClient := adapter.NewExternalClient(standURL, 15*time.Second)
 	useCase := usecase.MovieUseCase{MovieProvider: exClient, MovieRepo: repository.NewPostgresMovieRepository(pool)}
 
@@ -83,6 +87,7 @@ func main() {
 	log.Println("Movie synchronization completed.")
 
 
+	// Start the gRPC server in a separate goroutine
 	go func() {
 		lis, err := net.Listen("tcp", ":50051")
 		if err != nil {
@@ -98,6 +103,7 @@ func main() {
 		}
 	}()
 
+	// Initialize the HTTP server and handlers
 	handler := handler.NewMovieHandler(&useCase)
 
 	mux := http.NewServeMux()
