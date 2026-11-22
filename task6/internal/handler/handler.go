@@ -160,7 +160,14 @@ func (h *MovieHandler) GetLastMovie(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, toMovieResponse(lastMovie))
 }
 
-
+// @Summary Search movies
+// @Description Searches for movies based on the provided query parameter 'q'.
+// @Produce json
+// @Param q query string true "Search query"
+// @Success 200 {array} MovieResponse "List of matching movies"
+// @Failure 400 {string} string "Search query cannot be empty"
+// @Failure 500 {string} string "Internal server error"
+// @Router /search [get]
 func (h *MovieHandler) SearchMovies(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	movies, err := h.Provider.SearchMovies(r.Context(), query)
