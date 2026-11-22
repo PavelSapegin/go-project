@@ -27,6 +27,29 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
+func waitForReady(ctx context.Context, interval time.Duration ,check func(context.Context) error) error {
+	err := check(ctx)
+	if err == nil {
+		return nil
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			err := check(ctx)
+			if err == nil {
+				return nil
+			}
+		}
+	}
+}
+
+
 // @title Movie API
 // @version 1.0
 // @description This is a sample server for a movie API.
@@ -65,9 +88,8 @@ func main() {
 	}
 	defer pool.Close()
 
-	err_gpx := pool.Ping(ctx)
-	if err_gpx != nil {
-		log.Fatalf("failed to ping database: %v", err_gpx)
+	if err := waitForReady(ctx, 1*time.Second, pool.Ping); err != nil {
+		log.Fatalf("failed to wait for database to be ready: %v", err)
 	}
 
 	sqlDB := stdlib.OpenDBFromPool(pool)
@@ -85,8 +107,11 @@ func main() {
 		DB:       0,  // use default DB
 	})
 	defer rdb.Close()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("failed to ping Redis: %v", err)
+
+	if err := waitForReady(ctx, 1*time.Second, func(ctx context.Context) error {
+		return rdb.Ping(ctx).Err()
+	}); err != nil {
+		log.Fatalf("failed to wait for Redis to be ready: %v", err)
 	}
 
 	// Initialize the external client, use case, and repository
