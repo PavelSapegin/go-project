@@ -7,6 +7,7 @@ import (
 	"time"
 	"sync"
 	"math"
+	"strings"
 
 	"task3-http-grpc/internal/domain"
 )
@@ -14,6 +15,8 @@ import (
 type MovieUseCase struct {
 	MovieProvider domain.MovieProvider
 	MovieRepo domain.MovieRepository
+	SearchIndex domain.SearchIndex
+	SearchCache domain.SearchCache
 }
 
 func (m *MovieUseCase) LoadMovies(ctx context.Context, from int, to int) ([]*domain.Movie, map[int]string, error) {
@@ -202,4 +205,59 @@ func (m *MovieUseCase) SynchronizeMovies(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (m *MovieUseCase) RebuildSearchIndex(ctx context.Context) error {
+	movies, err := m.MovieRepo.GetAllMovies(ctx)
+	if err != nil {
+		return fmt.Errorf("Couldn't get all movies from repository: %w", err)
+	}
+
+	if err := m.SearchIndex.IndexMovies(ctx, movies); err != nil {
+		return fmt.Errorf("Couldn't index movies: %w", err)
+	}
+
+	if err := m.SearchCache.CleanCache(ctx); err != nil {
+		return fmt.Errorf("Couldn't clean search cache: %w", err)
+	}
+
+	return nil
+}
+
+func (m *MovieUseCase) SearchMovies(ctx context.Context, query string) ([]*domain.Movie, error) {
+	trimmedQuery := strings.TrimSpace(query)
+
+	if trimmedQuery == "" {
+		return nil, domain.ErrEmptyQuery
+	}
+
+	cacheKey := strings.ToLower(trimmedQuery)
+	cachedMovies, err := m.SearchCache.GetSearchResult(ctx, cacheKey)
+	if err == nil {
+		return cachedMovies, nil
+	} else if !errors.Is(err, domain.ErrCacheMiss) {
+		return nil, fmt.Errorf("Couldn't get search result from cache: %w", err)
+	}
+
+	keywords := domain.Tokenize(trimmedQuery)
+	
+	if len(keywords) == 0 {
+		return []*domain.Movie{}, domain.ErrEmptyQuery
+	}
+
+	movieIDs, err := m.SearchIndex.SearchIDsByWords(ctx, keywords)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't search movie IDs by keywords: %w", err)
+	}
+
+	resultMovies, err := m.MovieRepo.GetMovieByIDs(ctx, movieIDs)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't get movies by IDs: %w", err)
+	}
+	
+	if err := m.SearchCache.SaveSearchResult(ctx, cacheKey, resultMovies, time.Hour); err != nil {
+		return nil, fmt.Errorf("Couldn't save search result to cache: %w", err)
+	}
+
+	return resultMovies, nil
 }
