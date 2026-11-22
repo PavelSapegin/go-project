@@ -29,22 +29,26 @@ import (
 )
 
 func waitForReady(ctx context.Context, interval time.Duration ,check func(context.Context) error) error {
-	attemptCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	err := check(attemptCtx)
+	tryCheck := func() error {
+		attemptCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		return check(attemptCtx)
+	}
+
+	err := tryCheck()
 	if err == nil {
 		return nil
 	}
-
+	
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("context canceled while waiting for readiness: %w %w", ctx.Err(), err)
 		case <-ticker.C:
-			err := check(ctx)
+			err = tryCheck()
 			if err == nil {
 				return nil
 			}
