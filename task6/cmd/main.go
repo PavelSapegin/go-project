@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 	"context"
+	"fmt"
 
 	_ "task3-http-grpc/docs"
 	moviepb "task3-http-grpc/proto"
@@ -28,7 +29,9 @@ import (
 )
 
 func waitForReady(ctx context.Context, interval time.Duration ,check func(context.Context) error) error {
-	err := check(ctx)
+	attemptCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	err := check(attemptCtx)
 	if err == nil {
 		return nil
 	}
@@ -39,7 +42,7 @@ func waitForReady(ctx context.Context, interval time.Duration ,check func(contex
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("context canceled while waiting for readiness: %w %w", ctx.Err(), err)
 		case <-ticker.C:
 			err := check(ctx)
 			if err == nil {
