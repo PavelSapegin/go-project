@@ -159,3 +159,34 @@ func (h *MovieHandler) GetLastMovie(w http.ResponseWriter, r *http.Request) {
 	}
 	h.respondJSON(w, http.StatusOK, toMovieResponse(lastMovie))
 }
+
+// @Summary Search movies
+// @Description Searches for movies based on the provided query parameter 'q'.
+// @Produce json
+// @Param q query string true "Search query"
+// @Success 200 {array} MovieResponse "List of matching movies"
+// @Failure 400 {string} string "Search query cannot be empty"
+// @Failure 500 {string} string "Internal server error"
+// @Router /search [get]
+func (h *MovieHandler) SearchMovies(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	movies, err := h.Provider.SearchMovies(r.Context(), query)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		if errors.Is(err, domain.ErrEmptyQuery) {
+			http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Error searching movies: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	movieResponses := make([]*MovieResponse, len(movies))
+	for i, movie := range movies {
+		movieResponses[i] = toMovieResponse(movie)
+	}
+
+	h.respondJSON(w, http.StatusOK, movieResponses)
+}

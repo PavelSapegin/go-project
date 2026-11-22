@@ -75,3 +75,55 @@ func (r *PostgresMovieRepository) SaveMovies(ctx context.Context, movies []*doma
 	
 	return tx.Commit(ctx)
 }
+
+func (r *PostgresMovieRepository) GetAllMovies(ctx context.Context) ([]*domain.Movie, error) {
+	rows, err := r.pool.Query(ctx, "SELECT id, title, year, director FROM movies")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	movies := []*domain.Movie{}
+	for rows.Next() {
+		var movie domain.Movie
+		err := rows.Scan(&movie.MovieId, &movie.Title, &movie.Year, &movie.Director)
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, &movie)
+	}
+	
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return movies, nil
+}
+
+func (r *PostgresMovieRepository) GetMovieByIDs(ctx context.Context, movieIDs []int) ([]*domain.Movie, error) {
+	movies := make([]*domain.Movie, 0, len(movieIDs))
+	if len(movieIDs) == 0 {
+		return movies, nil
+	}
+
+	rows, err := r.pool.Query(ctx, "SELECT id, title, year, director FROM movies WHERE id = ANY($1)", movieIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var movie domain.Movie
+		err := rows.Scan(&movie.MovieId, &movie.Title, &movie.Year, &movie.Director)
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, &movie)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return movies, nil
+}

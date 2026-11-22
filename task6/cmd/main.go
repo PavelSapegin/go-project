@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 	"context"
+	"fmt"
 
 	_ "task3-http-grpc/docs"
 	moviepb "task3-http-grpc/proto"
@@ -24,7 +25,37 @@ import (
 	pgxpool "github.com/jackc/pgx/v5/pgxpool"
 	stdlib "github.com/jackc/pgx/v5/stdlib"
     goose "github.com/pressly/goose/v3"
+	redis "github.com/redis/go-redis/v9"
 )
+
+func waitForReady(ctx context.Context, interval time.Duration ,check func(context.Context) error) error {
+	tryCheck := func() error {
+		attemptCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		return check(attemptCtx)
+	}
+
+	err := tryCheck()
+	if err == nil {
+		return nil
+	}
+	
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context canceled while waiting for readiness: %w %w", ctx.Err(), err)
+		case <-ticker.C:
+			err = tryCheck()
+			if err == nil {
+				return nil
+			}
+		}
+	}
+}
+
 
 // @title Movie API
 // @version 1.0
@@ -48,7 +79,12 @@ func main() {
 		dbURL = "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 
 	defer cancel()
 
@@ -59,9 +95,8 @@ func main() {
 	}
 	defer pool.Close()
 
-	err_gpx := pool.Ping(ctx)
-	if err_gpx != nil {
-		log.Fatalf("failed to ping database: %v", err_gpx)
+	if err := waitForReady(ctx, 1*time.Second, pool.Ping); err != nil {
+		log.Fatalf("failed to wait for database to be ready: %v", err)
 	}
 
 	sqlDB := stdlib.OpenDBFromPool(pool)
@@ -73,10 +108,23 @@ func main() {
 		log.Fatalf("failed to apply migrations %v", err)
 	}
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	defer rdb.Close()
+
+	if err := waitForReady(ctx, 1*time.Second, func(ctx context.Context) error {
+		return rdb.Ping(ctx).Err()
+	}); err != nil {
+		log.Fatalf("failed to wait for Redis to be ready: %v", err)
+	}
 
 	// Initialize the external client, use case, and repository
 	exClient := adapter.NewExternalClient(standURL, 15*time.Second)
-	useCase := usecase.MovieUseCase{MovieProvider: exClient, MovieRepo: repository.NewPostgresMovieRepository(pool)}
+	redisRepo := repository.NewRedisMovieRepository(rdb)
+	useCase := usecase.MovieUseCase{MovieProvider: exClient, MovieRepo: repository.NewPostgresMovieRepository(pool), SearchIndex: redisRepo, SearchCache: redisRepo}
 
 	syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -85,7 +133,11 @@ func main() {
 		log.Fatalf("failed to synchronize movies: %v", err)
 	}
 	log.Println("Movie synchronization completed.")
-
+	log.Println("Starting search index rebuild...")
+	if err := useCase.RebuildSearchIndex(syncCtx); err != nil {
+		log.Fatalf("failed to rebuild search index: %v", err)
+	}
+	log.Println("Search index rebuilt successfully.")
 
 	// Start the gRPC server in a separate goroutine
 	go func() {
@@ -110,6 +162,7 @@ func main() {
 	mux.HandleFunc("GET /load-movies", handler.GetMovieFromTo)
 	mux.HandleFunc("GET /last-movie", handler.GetLastMovie)
 	mux.HandleFunc("GET /swagger/", httpSwagger.Handler())
+	mux.HandleFunc("GET /search", handler.SearchMovies)
 
 	server := &http.Server{
 		Addr:         serverAddr,
