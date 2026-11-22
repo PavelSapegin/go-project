@@ -159,3 +159,27 @@ func (h *MovieHandler) GetLastMovie(w http.ResponseWriter, r *http.Request) {
 	}
 	h.respondJSON(w, http.StatusOK, toMovieResponse(lastMovie))
 }
+
+
+func (h *MovieHandler) SearchMovies(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	movies, err := h.Provider.SearchMovies(r.Context(), query)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		if errors.Is(err, domain.ErrEmptyQuery) {
+			http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Error searching movies: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	movieResponses := make([]*MovieResponse, len(movies))
+	for i, movie := range movies {
+		movieResponses[i] = toMovieResponse(movie)
+	}
+
+	h.respondJSON(w, http.StatusOK, movieResponses)
+}
